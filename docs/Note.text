@@ -1,0 +1,13 @@
+ENV หรือ Environment Variables คือ ตัวแปรสภาพแวดล้อม ซึ่งใช้ในการเก็บค่าคอนฟิกูเรชันที่สำคัญ เช่น รหัสผ่าน ฐานข้อมูล หรือคีย์ API โดยไม่ต้องฝังข้อมูลเหล่านี้ไว้ในโค้ดโดยตรง
+
+1. รันเซิร์ฟเวอร์ Node.js
+node server.js
+
+→ http://localhost:3000
+
+2. ใช้ Postman
+เลือก HTTP Method และใส่ URL
+- POST /auth/register → สมัคร
+- POST /auth/login → ได้ token กลับมา
+- POST /reservations/book → จองห้อง (ใส่ body JSON)
+- GET /reservations/my/:userId → ดูรายการที่จอง
