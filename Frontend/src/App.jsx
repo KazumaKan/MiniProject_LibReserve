@@ -1,35 +1,40 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './hook/useAuth';
+import { LoginPage } from './pages/LoginPage';
+import { DashboardPage } from './pages/DashboardPage';
+import { BookingHistoryPage } from './pages/BookingHistoryPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Component ภายในที่เข้าถึง Auth Context ได้
+const AppContent = ({ currentPage, onNavigate }) => {
+  const { user } = useAuth();
+
+  // ถ้ายังไม่ได้ล็อกอิน แสดงหน้า Login
+  if (!user) {
+    return <LoginPage />;
+  }
+
+  // ถ้าล็อกอินแล้ว แสดงหน้าตาม navigation
+  switch (currentPage) {
+    case 'booking-list':
+      return <BookingHistoryPage onNavigate={onNavigate} />;
+    case 'book-room':
+    default:
+      return <DashboardPage onNavigate={onNavigate} />;
+  }
+};
+
+// Main App Component
+export default function App() {
+  const [currentPage, setCurrentPage] = useState('book-room');
+  
+  const handleNavigate = (page) => {
+    setCurrentPage(page);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <AuthProvider>
+      <AppContent currentPage={currentPage} onNavigate={handleNavigate} />
+    </AuthProvider>
+  );
 }
-
-export default App
