@@ -4,8 +4,8 @@ export const LoginPage = () => {
   return (
     <div className="min-h-screen flex">
       {/* Left Panel - Login Form */}
-      <div className="w-full lg:w-2/5 bg-white flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-2/5 bg-white flex items-center justify-center p-8 ">
+        <div className="w-full max-w-md ">
           {/* Logo */}
           <div className="mb-12">
             <h1 className="text-6xl font-bold text-gray-900 mb-1">SPU</h1>
@@ -65,3 +65,17 @@ export const LoginPage = () => {
     </div>
   );
 };
+
+
+/* 
+Right Panel - Decorative Background 
+    <div className="hidden lg:flex lg:w-3/5 bg-white items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0">
+            <img
+            src="/path/to/your/background-image.png"
+            alt="Decorative background"
+            className="w-full h-full object-cover opacity-90"
+            />
+        </div>
+    </div>
+*/

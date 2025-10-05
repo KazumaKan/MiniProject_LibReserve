@@ -113,7 +113,7 @@ const CalendarPicker = ({ selectedDate, onSelectDate }) => {
   const dayNames = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
   return (
-    <div className="bg-white border rounded-lg p-4">
+    <div className="bg-white border border-gray-300 rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <button
@@ -220,7 +220,7 @@ const MemberInput = ({ members, onAddMember, onRemoveMember }) => {
           onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
           placeholder="กรอกรหัสสมาชิก 8 หลัก (ตัวเลขเท่านั้น)"
           maxLength={8}
-          className="flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-3 py-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
         />
         <button
           onClick={handleAdd}
@@ -239,7 +239,7 @@ const MemberInput = ({ members, onAddMember, onRemoveMember }) => {
 
       {/* Members List */}
       {members.length > 0 && (
-        <div className="border rounded p-3 mt-3 space-y-2">
+        <div className="border border-gray-400 rounded p-3 mt-3 space-y-2">
           <p className="text-sm font-medium text-gray-700">
             รายชื่อสมาชิก ({members.length} คน)
           </p>
@@ -427,29 +427,45 @@ export const BookingForm = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 ">
         {/* User Info */}
-        <div className="mb-6 pb-6 border-b">
-          <p className="text-sm text-gray-600 mb-2">ผู้ทำรายการจอง</p>
+        <div className="mb-6 pb-6 border-gray-200 border-b">
+          <p className="text-sm text-gray-600 mb-4">ผู้ทำรายการจอง</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600">ชื่อ: </span>
+            <div className="flex">
+              <span className="text-gray-600 w-48">รหัสนักศึกษา:</span>
+              <span className="font-medium">{user?.studentId}</span>
+            </div>
+            <div className="flex">
+              <span className="text-gray-600 w-48">คณะ:</span>
               <span className="font-medium">{user?.fullName}</span>
             </div>
-            <div>
-              <span className="text-gray-600">รหัสนักศึกษา: </span>
-              <span className="font-medium">{user?.studentId}</span>
+            <div className="flex">
+              <span className="text-gray-600 w-48">รหัสบัตรสมาร์ทการ์ด:</span>
+              <span className="font-medium">{user?.libraryCard}</span>
+            </div>
+            <div className="flex">
+              <span className="text-gray-600 w-48">สาขา:</span>
+              <span className="font-medium">{user?.branch}</span>
+            </div>
+            <div className="flex">
+              <span className="text-gray-600 w-48">หมายเลขบัตรประชาชน:</span>
+              <span className="font-medium">{user?.nationalId}</span>
+            </div>
+            <div className="flex">
+              <span className="text-gray-600 w-48">สถานะ:</span>
+              <span className="font-medium">{user?.status}</span>
             </div>
           </div>
         </div>
 
         {/* Booking Form */}
-        <div className="space-y-6">
+        <div className="space-y-6 ">
           {/* Step 1: Select Date */}
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <CalendarIcon size={20} className="text-blue-600" />
-              <label className="text-lg font-semibold text-gray-600">1. เลือกวันที่ต้องการ</label>
+            <div className="flex items-center gap-2 mb-3 ">
+              <CalendarIcon size={20} className="text-blue-600 " />
+              <label className="text-lg font-semibold">1. เลือกวันที่ต้องการ</label>
             </div>
             <CalendarPicker
               selectedDate={selectedDate}
@@ -470,7 +486,7 @@ export const BookingForm = () => {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Users size={20} className="text-blue-600" />
-              <label className="text-lg font-semibold text-gray-600">2. เลือกชั้นและห้อง</label>
+              <label className="text-lg font-semibold">2. เลือกชั้นและห้อง</label>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -482,7 +498,7 @@ export const BookingForm = () => {
                     setSelectedFloor(e.target.value);
                     setSelectedRoom('');
                   }}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 text-gray-500 rounded focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">-- เลือกชั้น --</option>
                   <option value="floor1">ชั้น 1</option>
@@ -497,7 +513,7 @@ export const BookingForm = () => {
                   value={selectedRoom}
                   onChange={(e) => setSelectedRoom(e.target.value)}
                   disabled={!selectedFloor}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="">-- เลือกห้อง --</option>
                   {selectedFloor &&
@@ -518,7 +534,7 @@ export const BookingForm = () => {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Clock size={20} className="text-blue-600" />
-              <label className="text-lg font-semibold text-gray-600">3. เลือกช่วงเวลา (1-2 ชั่วโมง)</label>
+              <label className="text-lg font-semibold">3. เลือกช่วงเวลา (1-2 ชั่วโมง)</label>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -530,7 +546,7 @@ export const BookingForm = () => {
                     setStartTime(e.target.value);
                     setEndTime(''); // Reset end time เมื่อเปลี่ยน start time
                   }}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-500 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">-- เลือกเวลาเริ่มต้น --</option>
                   {TIME_SLOTS.slice(0, -1).map((slot) => ( // ไม่ให้เลือก 17:00 เป็นเวลาเริ่ม
@@ -547,7 +563,7 @@ export const BookingForm = () => {
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
                   disabled={!startTime}
-                  className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+                  className="w-full px-3 py-2 border border-gray-300 rounded text-gray-500 focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
                 >
                   <option value="">-- เลือกเวลาสิ้นสุด --</option>
                   {getAvailableEndTimes().map((slot) => (
@@ -589,7 +605,7 @@ export const BookingForm = () => {
           <div>
             <div className="flex items-center gap-2 mb-3">
               <Users size={20} className="text-blue-600" />
-              <label className="text-lg font-semibold text-gray-600">4. เพิ่มสมาชิกที่จอง</label>
+              <label className="text-lg font-semibold">4. เพิ่มสมาชิกที่จอง</label>
             </div>
             <MemberInput
               members={members}
@@ -599,7 +615,7 @@ export const BookingForm = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="pt-6 border-t">
+          <div className="pt-6 ">
             <button
               onClick={handleSubmit}
               className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium px-8 py-3 rounded-lg transition-colors"
