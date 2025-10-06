@@ -10,8 +10,8 @@ const SECRET = process.env.JWT_SECRET || "mysecretkey";
 
 /**
  * POST /login
- * This route handles user login by checking email and password.
- * If valid, it returns a JWT token along with user data.
+ * เส้นทางนี้ใช้สำหรับเข้าสู่ระบบด้วย email และ password
+ * หากเข้าสู่ระบบสำเร็จ จะส่ง token และข้อมูลผู้ใช้กลับไป
  */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -52,8 +52,8 @@ router.post("/login", async (req, res) => {
 
 /**
  * GET /profile/:id
- * This route fetches a user's profile data by user ID.
- * It returns the user's id, name, and email.
+ * เส้นทางนี้ใช้ดึงข้อมูลโปรไฟล์ของผู้ใช้ตาม user_id
+ * จะส่ง id, name, email กลับไป
  */
 router.get("/profile/:id", async (req, res) => {
   const { id } = req.params;
