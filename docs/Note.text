@@ -7,7 +7,6 @@ node server.js
 
 2. ใช้ Postman
 เลือก HTTP Method และใส่ URL
-- POST /auth/register → สมัคร
 - POST /auth/login → ได้ token กลับมา
 - POST /reservations/book → จองห้อง (ใส่ body JSON)
 - GET /reservations/my/:userId → ดูรายการที่จอง
