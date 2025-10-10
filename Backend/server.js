@@ -15,6 +15,10 @@ require("./sockets/reservationSocket")(io);
 app.use(cors());
 app.use(express.json());
 
+app.get("/ping", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use("/auth", authRoutes);
 app.use("/reservations", reservationRoutes);
 

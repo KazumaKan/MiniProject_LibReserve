@@ -14,6 +14,8 @@ const SECRET = process.env.JWT_SECRET || "mysecretkey";
  * หากเข้าสู่ระบบสำเร็จ จะส่ง token และข้อมูลผู้ใช้กลับไป
  */
 router.post("/login", async (req, res) => {
+  console.log("📩 [LOGIN] Received:", req.body);
+
   const { email, password } = req.body;
 
   try {
@@ -24,16 +26,27 @@ router.post("/login", async (req, res) => {
     const user = rows[0];
 
     // If user not found, return 404
-    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      console.warn(`⚠️ [LOGIN] User not found: ${email}`);
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log(`🔎 [LOGIN] User found: ${user.email}`);
 
     // Compare plain-text password (note: use bcrypt in production)
-    if (user.password !== password)
+    if (user.password !== password) {
+      console.warn(`⚠️ [LOGIN] Invalid password for user: ${email}`);
       return res.status(401).json({ message: "Invalid password" });
+    }
+
+    console.log("🔑 [LOGIN] Password verified");
 
     // Generate JWT token valid for 2 hours
     const token = jwt.sign({ userId: user.user_id }, SECRET, {
       expiresIn: "2h",
     });
+
+    console.log(`✅ [LOGIN] Token generated for user: ${email}`);
 
     // Return token and user info
     res.json({
@@ -57,6 +70,7 @@ router.post("/login", async (req, res) => {
  */
 router.get("/profile/:id", async (req, res) => {
   const { id } = req.params;
+  console.log(`📩 [PROFILE] Fetching profile for user id: ${id}`);
 
   try {
     // Query user by ID and alias user_id to id
@@ -67,8 +81,11 @@ router.get("/profile/:id", async (req, res) => {
 
     // If user not found, return 404
     if (rows.length === 0) {
+      console.warn(`⚠️ [PROFILE] User not found with id: ${id}`);
       return res.status(404).json({ message: "User not found" });
     }
+
+    console.log(`✅ [PROFILE] Profile found for user id: ${id}`);
 
     // Return user profile
     res.json(rows[0]);

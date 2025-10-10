@@ -22,48 +22,66 @@ async function isRoomAvailable(roomId, startTime, endTime) {
  * ตรวจสอบจำนวนสมาชิก, ช่วงเวลา, ความซ้อนของเวลา แล้วบันทึกข้อมูลการจอง
  */
 router.post("/room", async (req, res) => {
+  console.log("📩 [BOOK] Request Body:", req.body);
   const { userId, roomId, startTime, endTime, emails } = req.body;
 
-  // ตรวจสอบว่ามีสมาชิกอย่างน้อย 3 คน
-  if (!emails || emails.length < 3) {
-    return res.status(400).json({ error: "ต้องมีสมาชิกอย่างน้อย 3 คน" });
-  }
+  try {
+    // ตรวจสอบว่ามีสมาชิกอย่างน้อย 3 คน
+    if (!emails || !Array.isArray(emails) || emails.length < 3) {
+      console.warn("⚠️ [BOOK] สมาชิกน้อยกว่า 3 คน");
+      return res.status(400).json({ error: "ต้องมีสมาชิกอย่างน้อย 3 คน" });
+    }
 
-  // ตรวจสอบช่วงเวลา: ต้องอยู่ในช่วง 09:00 - 17:00 และไม่เกิน 2 ชั่วโมง
-  const startHour = new Date(startTime).getHours();
-  const endHour = new Date(endTime).getHours();
-  if (startHour < 9 || endHour > 17 || endHour - startHour > 2) {
-    return res.status(400).json({ error: "เวลาจองไม่ถูกต้อง" });
-  }
+    // ตรวจสอบช่วงเวลา: ต้องอยู่ในช่วง 09:00 - 17:00 และไม่เกิน 2 ชั่วโมง
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    const startHour = startDate.getHours();
+    const endHour = endDate.getHours();
+    if (
+      startHour < 9 ||
+      endHour > 17 ||
+      endDate <= startDate ||
+      (endDate - startDate) / (1000 * 60 * 60) > 2
+    ) {
+      console.warn("⚠️ [BOOK] เวลาจองไม่ถูกต้อง");
+      return res.status(400).json({ error: "เวลาจองไม่ถูกต้อง" });
+    }
 
-  // ตรวจสอบว่าห้องว่างหรือไม่
-  const available = await isRoomAvailable(roomId, startTime, endTime);
-  if (!available) {
-    return res.status(400).json({ error: "ห้องไม่ว่างในช่วงเวลานี้" });
-  }
+    // ตรวจสอบว่าห้องว่างหรือไม่
+    const available = await isRoomAvailable(roomId, startTime, endTime);
+    if (!available) {
+      console.warn("⚠️ [ROOM] ห้องไม่ว่างในช่วงเวลานี้");
+      return res.status(400).json({ error: "ห้องไม่ว่างในช่วงเวลานี้" });
+    }
 
-  // บันทึกข้อมูลการจองห้อง
-  const [result] = await pool.query(
-    "INSERT INTO reservations (user_id, room_id, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, 'BOOKED', NOW())",
-    [userId, roomId, startTime, endTime]
-  );
-
-  const reservationId = result.insertId; // ID ของการจองที่เพิ่งสร้าง
-
-  // บันทึกสมาชิกของการจอง (ดึงชื่อจาก users)
-  for (let email of emails) {
-    const [users] = await pool.query("SELECT name FROM users WHERE email = ?", [
-      email,
-    ]);
-    let name = users.length > 0 ? users[0].name : "Unknown";
-
-    await pool.query(
-      "INSERT INTO reservation_members (reservation_id, name, email) VALUES (?, ?, ?)",
-      [reservationId, name, email]
+    // บันทึกข้อมูลการจองห้อง
+    const [result] = await pool.query(
+      "INSERT INTO reservations (user_id, room_id, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, 'BOOKED', NOW())",
+      [userId, roomId, startTime, endTime]
     );
-  }
 
-  res.json({ message: "จองสำเร็จ", reservationId });
+    const reservationId = result.insertId; // ID ของการจองที่เพิ่งสร้าง
+    console.log(`✅ [ROOM] Reservation created ID: ${reservationId}`);
+
+    // บันทึกสมาชิกของการจอง (ดึงชื่อจาก users)
+    for (let email of emails) {
+      const [users] = await pool.query(
+        "SELECT name FROM users WHERE email = ?",
+        [email]
+      );
+      let name = users.length > 0 ? users[0].name : "Unknown";
+
+      await pool.query(
+        "INSERT INTO reservation_members (reservation_id, name, email) VALUES (?, ?, ?)",
+        [reservationId, name, email]
+      );
+    }
+
+    res.json({ message: "จองสำเร็จ", reservationId });
+  } catch (err) {
+    console.error("❌ [BOOK] Error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 /**
@@ -73,18 +91,25 @@ router.post("/room", async (req, res) => {
  */
 router.get("/my/:userId", async (req, res) => {
   const { userId } = req.params;
+  console.log(`📩 [GET MY] userId=${userId}`);
 
-  const [rows] = await pool.query(
-    `
-    SELECT r.reservation_id, r.room_id, r.start_time, r.end_time, rm.name as member_name
-    FROM reservations r
-    JOIN reservation_members rm ON r.reservation_id = rm.reservation_id
-    WHERE r.user_id = ? OR rm.email IN (SELECT email FROM users WHERE user_id = ?)
-  `,
-    [userId, userId]
-  );
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT r.reservation_id, r.room_id, r.start_time, r.end_time, rm.name as member_name
+      FROM reservations r
+      JOIN reservation_members rm ON r.reservation_id = rm.reservation_id
+      WHERE r.user_id = ? OR rm.email IN (SELECT email FROM users WHERE user_id = ?)
+    `,
+      [userId, userId]
+    );
 
-  res.json(rows); // ส่งผลลัพธ์รายการจองกลับ
+    console.log(`✅ [GET MY] Found ${rows.length} reservations`);
+    res.json(rows);
+  } catch (err) {
+    console.error("❌ [GET MY] Error:", err.message);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 module.exports = router;
