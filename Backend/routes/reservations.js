@@ -22,13 +22,13 @@ async function isRoomAvailable(roomId, startTime, endTime) {
  * ตรวจสอบจำนวนสมาชิก, ช่วงเวลา, ความซ้อนของเวลา แล้วบันทึกข้อมูลการจอง
  */
 router.post("/room", async (req, res) => {
-  console.log("📩 [BOOK] Request Body:", req.body);
+  console.log("📩 [ROOM] Request Body:", req.body);
   const { userId, roomId, startTime, endTime, emails } = req.body;
 
   try {
     // ตรวจสอบว่ามีสมาชิกอย่างน้อย 3 คน
     if (!emails || !Array.isArray(emails) || emails.length < 3) {
-      console.warn("⚠️ [BOOK] สมาชิกน้อยกว่า 3 คน");
+      console.warn("⚠️ [ROOM] สมาชิกน้อยกว่า 3 คน");
       return res.status(400).json({ error: "ต้องมีสมาชิกอย่างน้อย 3 คน" });
     }
 
@@ -43,7 +43,7 @@ router.post("/room", async (req, res) => {
       endDate <= startDate ||
       (endDate - startDate) / (1000 * 60 * 60) > 2
     ) {
-      console.warn("⚠️ [BOOK] เวลาจองไม่ถูกต้อง");
+      console.warn("⚠️ [ROOM] เวลาจองไม่ถูกต้อง");
       return res.status(400).json({ error: "เวลาจองไม่ถูกต้อง" });
     }
 
@@ -52,6 +52,23 @@ router.post("/room", async (req, res) => {
     if (!available) {
       console.warn("⚠️ [ROOM] ห้องไม่ว่างในช่วงเวลานี้");
       return res.status(400).json({ error: "ห้องไม่ว่างในช่วงเวลานี้" });
+    }
+
+    // ตรวจสอบว่าที่อยู่อีเมลของสมาชิกทั้งหมดมีในระบบ
+    const [validUsers] = await pool.query(
+      "SELECT email, name FROM users WHERE email IN (?)",
+      [emails]
+    );
+
+    if (validUsers.length !== emails.length) {
+      // หาว่าใครไม่เจอ
+      const foundEmails = validUsers.map((u) => u.email);
+      const missingEmails = emails.filter((e) => !foundEmails.includes(e));
+
+      console.warn("⚠️ [ROOM] พบ email ที่ไม่มีในระบบ:", missingEmails);
+      return res.status(400).json({
+        error: `ไม่พบอีเมลต่อไปนี้ในระบบ: ${missingEmails.join(", ")}`,
+      });
     }
 
     // บันทึกข้อมูลการจองห้อง
@@ -79,7 +96,7 @@ router.post("/room", async (req, res) => {
 
     res.json({ message: "จองสำเร็จ", reservationId });
   } catch (err) {
-    console.error("❌ [BOOK] Error:", err.message);
+    console.error("❌ [ROOM] Error:", err.message);
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -13,7 +13,7 @@ node server.js → http://10.99.72.36:3000
     "password": "รหัสผ่านของ_email_นั้น"
     }
 
-- POST /reservations/book → จองห้อง (ใส่ body JSON)
+- POST /reservations/room → จองห้อง (ใส่ body JSON)
     {
     "userId": id ผู้ใช้,
     "roomId": id ห้องที่จะจอง,
