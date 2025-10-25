@@ -1,4 +1,4 @@
-const API_BASE_URL = "/api";
+const API_BASE_URL = "/api"; // <-- แก้ตรงนี้จากเดิม http://10.99.72.236:3000
 
 console.log("🌐 API Base URL:", API_BASE_URL);
 

@@ -22,17 +22,17 @@ async function isRoomAvailable(roomId, startTime, endTime) {
  * ตรวจสอบจำนวนสมาชิก, ช่วงเวลา, ความซ้อนของเวลา แล้วบันทึกข้อมูลการจอง
  */
 router.post("/room", async (req, res) => {
-  console.log("📩 [ROOM] Request Body:", req.body);
-  const { userId, roomId, startTime, endTime, emails } = req.body;
+  console.log("📩 [ROOM] Request Body:", req.body); // เปลี่ยนชื่อตัวแปร emails เป็น codeUsers
+  const { userId, roomId, startTime, endTime, codeUsers } = req.body; // <--- แก้ตรงนี้
 
   try {
-    // ตรวจสอบว่ามีสมาชิกอย่างน้อย 3 คน
-    if (!emails || !Array.isArray(emails) || emails.length < 3) {
+    // 1. ตรวจสอบว่ามีสมาชิกอย่างน้อย 3 คน
+    if (!codeUsers || !Array.isArray(codeUsers) || codeUsers.length < 3) {
+      // <--- ใช้ codeUsers
       console.warn("⚠️ [ROOM] สมาชิกน้อยกว่า 3 คน");
       return res.status(400).json({ error: "ต้องมีสมาชิกอย่างน้อย 3 คน" });
-    }
+    } // 2. ตรวจสอบช่วงเวลา: (Logic เดิม)
 
-    // ตรวจสอบช่วงเวลา: ต้องอยู่ในช่วง 09:00 - 17:00 และไม่เกิน 2 ชั่วโมง
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
     const startHour = startDate.getHours();
@@ -45,52 +45,52 @@ router.post("/room", async (req, res) => {
     ) {
       console.warn("⚠️ [ROOM] เวลาจองไม่ถูกต้อง");
       return res.status(400).json({ error: "เวลาจองไม่ถูกต้อง" });
-    }
+    } // 3. ตรวจสอบว่าห้องว่างหรือไม่ (Logic เดิม)
 
-    // ตรวจสอบว่าห้องว่างหรือไม่
     const available = await isRoomAvailable(roomId, startTime, endTime);
     if (!available) {
       console.warn("⚠️ [ROOM] ห้องไม่ว่างในช่วงเวลานี้");
       return res.status(400).json({ error: "ห้องไม่ว่างในช่วงเวลานี้" });
-    }
+    } // 4. ตรวจสอบว่ารหัสสมาชิก (code_user) ทั้งหมดมีในระบบ
 
-    // ตรวจสอบว่าที่อยู่อีเมลของสมาชิกทั้งหมดมีในระบบ
     const [validUsers] = await pool.query(
-      "SELECT email, name FROM users WHERE email IN (?)",
-      [emails]
+      // ใช้คอลัมน์ code_user แทน email
+      "SELECT code_user, name FROM users WHERE code_user IN (?)", // <--- แก้ตรงนี้
+      [codeUsers] // <--- ใช้ codeUsers
     );
 
-    if (validUsers.length !== emails.length) {
+    if (validUsers.length !== codeUsers.length) {
       // หาว่าใครไม่เจอ
-      const foundEmails = validUsers.map((u) => u.email);
-      const missingEmails = emails.filter((e) => !foundEmails.includes(e));
+      const foundCodes = validUsers.map((u) => u.code_user);
+      const missingCodes = codeUsers.filter((c) => !foundCodes.includes(c));
 
-      console.warn("⚠️ [ROOM] พบ email ที่ไม่มีในระบบ:", missingEmails);
+      console.warn("⚠️ [ROOM] พบ code_user ที่ไม่มีในระบบ:", missingCodes);
       return res.status(400).json({
-        error: `ไม่พบอีเมลต่อไปนี้ในระบบ: ${missingEmails.join(", ")}`,
+        error: `ไม่พบรหัสผู้ใช้ต่อไปนี้ในระบบ: ${missingCodes.join(", ")}`,
       });
-    }
+    } // 5. บันทึกข้อมูลการจองห้อง (Logic เดิม)
 
-    // บันทึกข้อมูลการจองห้อง
     const [result] = await pool.query(
       "INSERT INTO reservations (user_id, room_id, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, 'BOOKED', NOW())",
       [userId, roomId, startTime, endTime]
     );
 
     const reservationId = result.insertId; // ID ของการจองที่เพิ่งสร้าง
-    console.log(`✅ [ROOM] Reservation created ID: ${reservationId}`);
+    console.log(`✅ [ROOM] Reservation created ID: ${reservationId}`); // 6. บันทึกสมาชิกของการจอง (ดึงชื่อจาก users)
 
-    // บันทึกสมาชิกของการจอง (ดึงชื่อจาก users)
-    for (let email of emails) {
+    for (let code of codeUsers) {
+      // <--- ใช้ codeUsers
       const [users] = await pool.query(
-        "SELECT name FROM users WHERE email = ?",
-        [email]
-      );
-      let name = users.length > 0 ? users[0].name : "Unknown";
+        // ใช้คอลัมน์ code_user ในการค้นหา
+        "SELECT name, email FROM users WHERE code_user = ?", // <--- แก้ตรงนี้ (ดึง email ด้วย เพราะ reservation_members ยังใช้)
+        [code]
+      ); // ตรวจสอบว่าพบผู้ใช้
+      if (users.length === 0) continue;
+      const { name, email } = users[0]; // reservation_members ยังใช้ email ในการบันทึก
 
       await pool.query(
         "INSERT INTO reservation_members (reservation_id, name, email) VALUES (?, ?, ?)",
-        [reservationId, name, email]
+        [reservationId, name, email] // <--- บันทึก email เดิม เพื่อให้เข้ากับโครงสร้างตารางเดิม
       );
     }
 
@@ -111,14 +111,17 @@ router.get("/my/:userId", async (req, res) => {
   console.log(`📩 [GET MY] userId=${userId}`);
 
   try {
+    // ต้องเปลี่ยนการค้นหาจาก rm.email ไปอ้างอิงกับ users.code_user
+    // โดยใช้ subquery เพื่อหา email ของผู้ใช้จาก user_id
     const [rows] = await pool.query(
       `
-      SELECT r.reservation_id, r.room_id, r.start_time, r.end_time, rm.name as member_name
-      FROM reservations r
-      JOIN reservation_members rm ON r.reservation_id = rm.reservation_id
-      WHERE r.user_id = ? OR rm.email IN (SELECT email FROM users WHERE user_id = ?)
-    `,
-      [userId, userId]
+      SELECT r.reservation_id, r.room_id, r.start_time, r.end_time, rm.name as member_name
+      FROM reservations r
+      JOIN reservation_members rm ON r.reservation_id = rm.reservation_id
+      WHERE r.user_id = ? 
+        OR rm.email = (SELECT email FROM users WHERE user_id = ?) 
+    `,
+      [userId, userId] // <--- แก้เงื่อนไข rm.email IN (...) เป็น rm.email = (...) เพราะต้องการหา email ของเจ้าของ user_id ที่ส่งมา
     );
 
     console.log(`✅ [GET MY] Found ${rows.length} reservations`);
