@@ -290,7 +290,7 @@ export const BookingForm = () => {
         setIsLoadingRooms(true);
         // const res = await fetch("http://10.99.72.236:3000/rooms");
         // const data = await res.json();
-        const res = await roomAPI.getRooms();
+        const res = await reservationAPI.getRooms();
         const data = res.data || res;
         setRooms(data);
       } catch (err) {
