@@ -58,7 +58,7 @@ router.post("/room", async (req, res) => {
 
     // บันทึกการจอง
     const [result] = await pool.query(
-      "INSERT INTO reservations (user_id, room_id, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, 'BOOKED', NOW())",
+      "INSERT INTO reservations (user_id, room_id, start_time, end_time, status, created_at) VALUES (?, ?, ?, ?, 'Confirmed', NOW())",
       [userId, roomId, startTime, endTime]
     );
     const reservationId = result.insertId;
