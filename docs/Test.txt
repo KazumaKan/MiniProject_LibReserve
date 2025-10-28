@@ -1,0 +1,136 @@
+╔══════════════════════════════════════════════════════╗
+                    Table of Contents                   
+═══════════════════════════════════════════════════════
+- 📄 File : routes/auth.js
+- 📄 ไฟล์: routes/rooms.js
+- 📄 ไฟล์: routes/reservations.js
+- 📄 ไฟล์: sockets/reservationSocket.js
+- 📄 ไฟล์: server.js
+╚══════════════════════════════════════════════════════╝
+
+📄 File : routes/auth.js :   
+    1️⃣ LOGIN TEST
+    Communication : HTTP
+    Method : POST
+    URL : http://localhost:3000/auth/login
+    Body (JSON) :
+        {
+        "email": "student1@gmail.com",
+        "password": "1234"
+        }
+        
+    ผลลัพธ์ (ตัวอย่าง):
+        {
+        "token": "eyJhbGciOiJIUzI1NiIs...",
+        "userId": 1,
+        "name": "สมชาย ใจดี",
+        "email": "student1@gmail.com",
+        "faculty": "Engineering",
+        "major": "Computer"
+        }
+
+        ❌ ถ้าอีเมลผิด → { "message": "User not found" }
+        ❌ ถ้ารหัสผิด → { "message": "Invalid password" }
+
+    2️⃣ PROFILE TEST
+    Communication : HTTP
+    Method : GET
+    URL : http://localhost:3000/auth/profile/1
+
+    ผลลัพธ์ (ตัวอย่าง) :
+        {
+        "id": 1,
+        "name": "สมชาย ใจดี",
+        "email": "student1@gmail.com"
+        }
+═══════════════════════════════════════════════════════
+📄 ไฟล์: routes/rooms.js
+    TEST : ดึงข้อมูลห้องทั้งหมด
+    Communication : HTTP
+    Method : GET
+    URL : http://localhost:3000/rooms
+
+    ผลลัพธ์ (ตัวอย่าง) :
+    [
+    { "room_id": 1, "room_name": "A101", "capacity": 8 },
+    { "room_id": 2, "room_name": "A102", "capacity": 10 }
+    ]
+
+    ❌ ถ้ามีปัญหาฐานข้อมูล :
+    {
+    "message": "Error fetching rooms"
+    }
+═══════════════════════════════════════════════════════
+📄 ไฟล์: routes/reservations.js
+    1️⃣ TEST : จองห้องใหม่
+    Communication : HTTP
+    Method : POST
+    URL : http://localhost:3000/reservations/room
+    Body (JSON) :
+        {
+        "userId": 1,
+        "roomId": 2,
+        "startTime": "2025-10-29T10:00:00",
+        "endTime": "2025-10-29T12:00:00",
+        "codeUsers": ["65010001", "65010002", "65010003"]
+        }
+
+    ผลลัพธ์ (ตัวอย่าง) :
+        {
+        "message": "จองสำเร็จ",
+        "reservationId": 25
+        }
+
+        ❌ สมาชิกน้อยกว่า 3:
+        { "error": "ต้องมีสมาชิกอย่างน้อย 3 คน" }
+
+        ❌ ห้องไม่ว่าง:
+        { "error": "ห้องไม่ว่างในช่วงเวลานี้" }
+
+    2️⃣ TEST : ดึงรายการจองของผู้ใช้
+    Communication : HTTP
+    Method : GET
+    URL : http://localhost:3000/reservations/my/1
+
+    ผลลัพธ์ (ตัวอย่าง) :
+        [
+        {
+            "reservation_id": 25,
+            "room_id": 2,
+            "start_time": "2025-10-29T10:00:00.000Z",
+            "end_time": "2025-10-29T12:00:00.000Z",
+            "member_name": "สมหญิง น่ารัก"
+        }
+        ]
+═══════════════════════════════════════════════════════
+📄 ไฟล์: sockets/reservationSocket.js
+    วิธีเทสผ่าน Socket.io Client หรือ Frontend
+
+    1️⃣ เปิด server ด้วย : node server.js หรือ npm start
+    2️⃣ ใช้โปรแกรมเช่น wscat หรือ Socket.io Tester
+
+    เชื่อมต่อ :
+    > wscat -c ws://localhost:3000
+
+    ส่ง event :
+    > emit newReservation { "roomId": 2, "status": "BOOKED" }
+
+    ผลลัพธ์ :
+    Client ทุกคนที่ต่อ socket อยู่จะได้รับ event:
+    > reservationUpdate { "roomId": 2, "status": "BOOKED" }
+
+    ❌ ถ้าไม่เห็น log → ตรวจสอบว่า socket.io server เชื่อมต่อถูกหรือไม่
+═══════════════════════════════════════════════════════
+📄 ไฟล์: server.js
+    TEST : ตรวจสอบว่า server ทำงานหรือไม่
+    Communication : HTTP
+    Method : GET
+    URL : http://localhost:3000/ping
+
+    ผลลัพธ์ :
+        {
+        "status": "ok"
+        }
+
+    ถ้าได้ข้อความนี้ → server ทำงานปกติ
+═══════════════════════════════════════════════════════
