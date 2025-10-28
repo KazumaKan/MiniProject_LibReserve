@@ -1,0 +1,126 @@
+╔══════════════════════════════════════════════════════╗
+                    Table of Contents                   
+═══════════════════════════════════════════════════════
+- 📄 File : config/db.js  
+- 📄 File : routes/auth.js
+- 📄 ไฟล์: routes/rooms.js
+- 📄 ไฟล์: routes/reservations.js
+- 📄 ไฟล์: sockets/reservationSocket.js
+- 📄 ไฟล์: server.js
+╚══════════════════════════════════════════════════════╝
+
+📄 File : config/db.js
+    หน้าที่ :
+    - ใช้เชื่อมต่อกับฐานข้อมูล MySQL โดยใช้ mysql2/promise
+    - ใช้ createPool() เพื่อให้เชื่อมต่อพร้อมกันหลาย connection ได้
+    - export ตัวแปร pool เพื่อใช้ query ในทุก route ได้สะดวก
+
+    ฟังก์ชันสำคัญ :
+    - mysql.createPool(config) : สร้าง connection pool กับฐานข้อมูล
+    - pool.query(sql, params) : ใช้รันคำสั่ง SQL โดยส่งค่า parameter แยกได้ (ป้องกัน SQL Injection)
+
+    ค่าที่ใช้จาก .env :
+    - DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+
+    การทำงาน:
+    1. โหลดค่าการตั้งค่าจาก env.js
+    2. สร้าง connection pool 1 ชุด
+    3. export pool เพื่อให้ routes อื่นนำไปใช้ได้
+═══════════════════════════════════════════════════════
+📄 File : routes/auth.js
+    หน้าที่ :
+    - จัดการระบบการเข้าสู่ระบบ (login)
+    - ดึงข้อมูลโปรไฟล์ผู้ใช้จาก user_id
+
+    ฟังก์ชัน/Route สำคัญ :
+        1️⃣ POST /auth/login
+        - รับ email, password จาก frontend
+        - ตรวจสอบข้อมูลในตาราง users
+        - ถ้าถูกต้อง สร้าง JWT token ส่งกลับ
+        - ส่งกลับข้อมูล : token, userId, name, email, faculty, major
+
+        2️⃣ GET /auth/profile/:id
+        - ดึงข้อมูลโปรไฟล์จาก user_id
+        - ส่งกลับข้อมูล : id, name, email
+
+    Logic :
+    - ใช้ jwt.sign() เพื่อสร้าง token มีอายุ 2 ชั่วโมง
+    - ยังไม่ได้เข้ารหัสรหัสผ่าน (เหมาะสำหรับ demo/testing)
+═══════════════════════════════════════════════════════
+📄 ไฟล์: routes/rooms.js
+    หน้าที่ :
+    - ดึงข้อมูลห้องทั้งหมดในระบบ
+
+    ฟังก์ชัน/Route :
+        1️⃣ GET /rooms
+        - query ข้อมูลจากตาราง rooms
+        - ส่งกลับเป็น JSON array ของห้องทั้งหมด
+
+    โครงสร้างข้อมูลที่ส่งกลับ :
+    [
+    {
+        "room_id": 1,
+        "room_name": "ห้องประชุม 1",
+        "capacity": 10,
+        "location": "ตึก A"
+    },
+    ...
+    
+═══════════════════════════════════════════════════════
+📄 ไฟล์: routes/reservations.js
+    หน้าที่ :
+    - จัดการระบบการจองห้องประชุม
+    - ตรวจสอบห้องว่าง ตรวจสอบสมาชิก และบันทึกการจอง
+
+    ฟังก์ชัน/Route สำคัญ :
+
+        1️⃣ ฟังก์ชัน isRoomAvailable(roomId, startTime, endTime)
+        - ตรวจสอบว่าห้องซ้ำเวลาหรือไม่
+        - ถ้าไม่มีรายการซ้อน return true (ว่าง)
+
+        2️⃣ POST /reservations/room
+        - ใช้สำหรับสร้างการจองใหม่
+        - ตรวจสอบ :
+            ✅ สมาชิกอย่างน้อย 3 คน
+            ✅ เวลาอยู่ในช่วง 9:00–17:00
+            ✅ ไม่เกิน 2 ชั่วโมง
+            ✅ ห้องต้องว่าง
+            ✅ code_user ทุกคนต้องมีในระบบ
+        - ถ้าผ่านทั้งหมด → INSERT ข้อมูลการจองและสมาชิก
+
+        3️⃣ GET /reservations/my/:userId
+        - ดึงรายการจองทั้งหมดของผู้ใช้ (ทั้งเจ้าของและที่เป็นสมาชิก)
+        - JOIN ตาราง reservations + reservation_members
+═══════════════════════════════════════════════════════
+📄 ไฟล์: sockets/reservationSocket.js
+    หน้าที่ :
+    - จัดการการสื่อสารแบบเรียลไทม์ผ่าน Socket.io
+    - เมื่อมีการจองใหม่ จะ broadcast ข้อมูลให้ทุก client ที่เชื่อมต่อ
+
+    ฟังก์ชันสำคัญ :
+    - io.on("connection", fn): เรียกเมื่อ client ต่อเข้ามา
+    - socket.on("newReservation", data) : รับ event จาก client เมื่อมีการจอง
+    - io.emit("reservationUpdate", data) : ส่งข้อมูลไปยังทุก client
+
+    ประโยชน์ :
+    - ทำให้หน้า Frontend อัปเดตสถานะห้องหรือการจองได้ทันทีโดยไม่ต้องรีเฟรช
+        - JOIN ตาราง reservations + reservation_members
+═══════════════════════════════════════════════════════
+📄 ไฟล์: server.js
+    หน้าที่ :
+    - เป็นจุดเริ่มต้นของแอปทั้งหมด (main entry point)
+    - รวม Express, Socket.io, Routes และ Middleware
+
+    โครงสร้างหลัก :
+    1️⃣ สร้าง express app
+    2️⃣ ใช้ middleware: cors(), express.json()
+    3️⃣ กำหนด routes:
+    - /auth → routes/auth.js
+    - /reservations → routes/reservations.js
+    - /rooms → routes/rooms.js
+    4️⃣ สร้าง HTTP server + Socket.io server
+    5️⃣ เริ่มฟัง port (3000)
+
+    ตรวจสอบ server :
+    GET /ping → { "status": "ok" }
+═══════════════════════════════════════════════════════

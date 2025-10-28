@@ -1,0 +1,35 @@
+Environment Variables (ENV)
+    คืออะไร : ตัวแปรที่เก็บค่าการตั้งค่าของโปรแกรมภายนอก เช่น รหัสผ่านฐานข้อมูล, secret key, port, URL
+    ทำไมต้องใช้ : เพื่อไม่ให้ข้อมูลสำคัญถูกเขียนตรงในโค้ด เช่น secret JWT หรือ DB password
+
+JWT (JSON Web Token)
+    คืออะไร : Token ที่ใช้ยืนยันตัวตนผู้ใช้ หลัง login เสร็จ
+    ทำงานยังไง : server สร้าง token → client เก็บไว้ (LocalStorage / Session) → ส่ง token กลับมาเวลาขอข้อมูลที่ต้อง login
+
+Pool (MySQL Connection Pool)
+    คืออะไร : กลุ่มการเชื่อมต่อฐานข้อมูลที่เปิดไว้ล่วงหน้า
+    ทำไมต้องใช้ : ลดเวลาในการสร้าง connection ใหม่ทุกครั้ง เพิ่ม performance
+
+Express Router
+    คืออะไร : ตัวจัดการเส้นทาง (routes) ของ HTTP requests
+    ข้อดี : แยกโค้ดตามหน้าที่ เช่น auth.js, reservations.js
+
+Socket.io
+    คืออะไร : ไลบรารี real-time communication ระหว่าง client ↔ server
+    การใช้งาน :
+        io.on("connection") → เมื่อมี client connec
+        socket.on("eventName") → รับ event จาก client
+        io.emit("eventName") → ส่งข้อมูลไปทุก client
+
+REST API Methods
+    POST : ส่งข้อมูลไป server (สร้างข้อมูลใหม่)
+    GET : ดึงข้อมูลจาก server
+    PUT / PATCH : แก้ไขข้อมูล
+    DELETE : ลบข้อมูล
+
+HTTP Status Codes ที่ใช้บ่อย
+    200 OK → สำเร็จ
+    400 Bad Request → ข้อมูลไม่ถูกต้อง เช่น สมาชิกน้อยกว่า 3
+    401 Unauthorized → ไม่ผ่านการ login / password ผิด
+    404 Not Found → หา user หรือ resource ไม่เจอ
+    500 Internal Server Error → server error

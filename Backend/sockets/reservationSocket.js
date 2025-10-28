@@ -1,15 +1,13 @@
 module.exports = (io) => {
   io.on("connection", (socket) => {
-    console.log("User connected");
+    console.log("🟢 User connected");
 
-    // เมื่อมีการจองใหม่
     socket.on("newReservation", (data) => {
-      io.emit("reservationUpdate", data); // broadcast ไปทุก client
+      io.emit("reservationUpdate", data);
     });
 
     socket.on("disconnect", () => {
-      console.log("User disconnected");
+      console.log("🔴 User disconnected");
     });
   });
 };
-// const express = require("express");

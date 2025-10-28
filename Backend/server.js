@@ -2,6 +2,7 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const { port } = require("./config/env");
 
 // Import route handlers
 const authRoutes = require("./routes/auth");
@@ -26,6 +27,6 @@ app.use("/auth", authRoutes);
 app.use("/reservations", reservationRoutes);
 app.use("/rooms", roomRoutes);
 
-server.listen(3000, () => {
-  console.log("Server running on port 3000");
+server.listen(port, () => {
+  console.log(`🚀 Server running on port ${port}`);
 });
