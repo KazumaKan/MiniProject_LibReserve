@@ -11,22 +11,28 @@ const roomRoutes = require("./routes/rooms");
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*" } });
 
+// Socket.io setup
+const io = new Server(server, {
+  cors: { origin: "*" },
+});
 require("./sockets/reservationSocket")(io);
 
 // Middleware
-app.use(cors());
+app.use(cors()); // ใช้ CORS default
 app.use(express.json());
+
+// Test route
 app.get("/ping", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Use imported routes
+// Routes
 app.use("/auth", authRoutes);
 app.use("/reservations", reservationRoutes);
 app.use("/rooms", roomRoutes);
 
+// Start server
 server.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${port}`);
 });
