@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useAuth } from '../../hook/useAuth';
+import { useAuth } from '../../hook/useAuth.js';
 import { apiUtils } from '../../services/api';
+import { Eye, EyeOff } from 'lucide-react';
 
 export const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const { login, loading, error } = useAuth();
+  const [showPassword, setShowPassword] = useState(false); // toggle
   const [apiError, setApiError] = useState(null); // ✅ สำหรับ error จาก API ไม่พร้อม
 
   const handleSubmit = async () => {
@@ -23,13 +25,12 @@ export const LoginForm = () => {
         return;
       }
 
-      setApiError(null); // ล้าง error เก่า
+      setApiError(null); 
 
       console.log('🔐 Submitting login form');
       await login(email, password);
       console.log("✅ Login finished, user should update in context");
     } catch (err) {
-      // Error ถูกจัดการใน AuthContext แล้ว
     }
   };
 
@@ -59,21 +60,31 @@ export const LoginForm = () => {
       </div>
 
       {/* Password */}
-      <div>
+      <div className="relative">
         <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
           Password:
         </label>
+
         <input
-          type="password"
+          type={showPassword ? 'text' : 'password'}
           id="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           onKeyPress={handleKeyPress}
           disabled={loading}
-          className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
+          className="w-full px-4 py-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 pr-10"
           placeholder="••••••••"
         />
+
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-[42px] text-gray-500 hover:text-gray-700"
+        >
+          {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+        </button>
       </div>
+
 
       {/* ✅ API connection error */}
       {apiError && (
