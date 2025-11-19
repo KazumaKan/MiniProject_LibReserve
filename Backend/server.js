@@ -1,3 +1,4 @@
+// server.js
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -9,6 +10,14 @@ const authRoutes = require("./routes/auth");
 const reservationRoutes = require("./routes/reservations");
 const roomRoutes = require("./routes/rooms");
 
+// Socket
+const reservationSocket = require("./sockets/reservationSocket");
+
+// Middlewares
+const jsonResponseHeader = require("./middlewares/jsonResponseHeader");
+const notFoundHandler = require("./middlewares/notFoundHandler");
+const errorHandler = require("./middlewares/errorHandler");
+
 const app = express();
 const server = http.createServer(app);
 
@@ -16,39 +25,31 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
 });
-require("./sockets/reservationSocket")(io);
+reservationSocket(io);
 
-// Middleware
+// Debugging logs to verify imports
+console.log("jsonResponseHeader:", jsonResponseHeader);
+console.log("notFoundHandler:", notFoundHandler);
+console.log("errorHandler:", errorHandler);
+
+// Global Middlewares
 app.use(cors());
 app.use(express.json());
+app.use(jsonResponseHeader);
 
-// Force JSON response headers
-app.use((req, res, next) => {
-  res.setHeader("Content-Type", "application/json");
-  next();
-});
+// Health Check
+app.get("/ping", (req, res) => res.json({ status: "ok" }));
 
-// Test route
-app.get("/ping", (req, res) => {
-  res.json({ status: "ok" });
-});
-
-// Routes
+// API Routes
 app.use("/auth", authRoutes);
 app.use("/reservations", reservationRoutes);
 app.use("/rooms", roomRoutes);
 
-// JSON 404 (instead of HTML)
-app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
-});
+// Error Handlers
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-// JSON Error handler (instead of HTML)
-app.use((err, req, res, next) => {
-  console.error("🔥 SERVER ERROR:", err);
-  res.status(500).json({ error: "Server error", detail: err.message });
-});
-
+// Start Server
 server.listen(port, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${port}`);
 });

@@ -2,259 +2,201 @@ const express = require("express");
 const pool = require("../config/db");
 const router = express.Router();
 
-/* -------------------------------------------------
- * Utility functions
- * ------------------------------------------------- */
+// Utility functions
+const RoomStatus = {
+  PENDING: "Pending",
+  CANCELLED: "Cancelled",
+  CONFIRMED: "Confirmed",
+};
 
-// ตรวจสอบว่าห้องว่างไหม
+// check room availability
 async function isRoomAvailable(roomId, startTime, endTime) {
-  console.log("🔍 [CHECK ROOM AVAILABLE]", { roomId, startTime, endTime });
-
   const [rows] = await pool.query(
-    `SELECT * 
-     FROM reservations 
-     WHERE room_id = ? 
+    `SELECT 1
+     FROM reservations
+     WHERE room_id = ?
        AND (start_time < ? AND end_time > ?)
-       AND status != 'Cancelled'`,
-    [roomId, endTime, startTime]
+       AND status != ?`,
+    [roomId, endTime, startTime, RoomStatus.CANCELLED]
   );
-
-  console.log("📌 [ROOM AVAILABLE RESULT] rows:", rows.length);
   return rows.length === 0;
 }
 
-// ตรวจสอบผู้ใช้ตาม code_user
+// check user by code_user
 async function findUserByCode(code_user) {
   const [rows] = await pool.query(
-    "SELECT user_id, code_user, name, email FROM users WHERE code_user = ?",
+    `SELECT user_id, code_user, name, email
+     FROM users
+     WHERE code_user = ?`,
     [code_user]
   );
-  return rows;
+  return rows[0] || null;
 }
 
-// ดึงข้อมูลผู้ใช้จาก code_user หลายตัว
+// fetch users from multiple code_user
 async function findUsersByCodes(codeUsers) {
   if (!Array.isArray(codeUsers) || codeUsers.length === 0) return [];
-
   const [rows] = await pool.query(
-    "SELECT code_user, name, email FROM users WHERE code_user IN (?)",
+    `SELECT code_user, name, email
+     FROM users
+     WHERE code_user IN (?)`,
     [codeUsers]
   );
   return rows;
 }
 
-// ตรวจสอบเวลา + ห้ามจองย้อนหลัง
+// check booking time validity + no past booking
 function validateBookingTime(startTime, endTime) {
   const start = new Date(startTime);
   const end = new Date(endTime);
   const now = new Date();
-
-  // ตัดเวลาออก เหลือแค่ YYYY-MM-DD
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-  // ❌ ห้ามจองย้อนหลัง
-  if (start < today) {
-    console.log("❌ ห้ามจองย้อนหลัง");
-    return false;
-  }
+  if (start < today) return false;
 
-  const hours = (end - start) / 3600000; // คำนวณจำนวนชั่วโมง
+  const durationHours = (end - start) / 3600000;
 
   if (
     start.getHours() < 9 ||
     end.getHours() > 17 ||
     end <= start ||
-    hours > 2
+    durationHours > 2
   ) {
     return false;
   }
   return true;
 }
 
-/* -------------------------------------------------
- * Routes
- * ------------------------------------------------- */
-
-// 🔎 เช็คว่ามี code_user นี้ในระบบไหม
+// Routes
+// 🔎 check if code_user exists in system
 router.get("/my/check/:check_userId", async (req, res) => {
-  const { check_userId } = req.params;
-  console.log("📩 [CHECK USER]", check_userId);
-
   try {
-    const rows = await findUserByCode(check_userId);
+    const user = await findUserByCode(req.params.check_userId);
 
-    if (rows.length === 0) {
-      console.log("❌ ไม่พบผู้ใช้");
-      return res.status(404).json({ error: "ไม่พบผู้ใช้นี้ในระบบ" });
-    }
+    if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้นี้ในระบบ" });
 
-    console.log("✅ พบผู้ใช้:", rows[0]);
-    res.json({
-      message: "User พบในระบบ",
-      user: rows[0],
-    });
+    res.json({ message: "User พบในระบบ", user });
   } catch (err) {
-    console.error("❌ [CHECK USER ERROR]:", err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// 🟢 จองห้อง → สถานะเริ่มต้น Pending
+// 🟢 Book a room → Initial status Pending
 router.post("/room", async (req, res) => {
-  console.log("📩 [ROOM] Request Body:", req.body);
   const { userId, roomId, startTime, endTime, codeUsers } = req.body;
 
   try {
-    // จำนวนสมาชิก
     if (!Array.isArray(codeUsers) || codeUsers.length < 3) {
       return res.status(400).json({ error: "ต้องมีสมาชิกอย่างน้อย 3 คน" });
     }
 
-    // ตรวจสอบเวลาและวันย้อนหลัง
     if (!validateBookingTime(startTime, endTime)) {
       return res
         .status(400)
         .json({ error: "เวลาจองไม่ถูกต้องหรือเป็นวันย้อนหลัง" });
     }
 
-    // ตรวจสอบห้องว่าง
     if (!(await isRoomAvailable(roomId, startTime, endTime))) {
       return res.status(400).json({ error: "ห้องไม่ว่างในช่วงเวลานี้" });
     }
 
-    // ตรวจสอบ code_user ทั้งหมด
     const validUsers = await findUsersByCodes(codeUsers);
 
     if (validUsers.length !== codeUsers.length) {
-      const foundCodes = validUsers.map((u) => u.code_user);
-      const missing = codeUsers.filter((c) => !foundCodes.includes(c));
-
-      return res.status(400).json({
-        error: `ไม่พบรหัสผู้ใช้ต่อไปนี้: ${missing.join(", ")}`,
-      });
+      const missing = codeUsers.filter(
+        (c) => !validUsers.some((u) => u.code_user === c)
+      );
+      return res
+        .status(400)
+        .json({ error: `ไม่พบรหัสผู้ใช้ต่อไปนี้: ${missing.join(", ")}` });
     }
 
-    // Insert reservation → Pending
     const [result] = await pool.query(
-      `INSERT INTO reservations 
-       (user_id, room_id, start_time, end_time, status, created_at) 
-       VALUES (?, ?, ?, ?, 'Pending', NOW())`,
-      [userId, roomId, startTime, endTime]
+      `INSERT INTO reservations (user_id, room_id, start_time, end_time, status, created_at)
+       VALUES (?, ?, ?, ?, ?, NOW())`,
+      [userId, roomId, startTime, endTime, RoomStatus.PENDING]
     );
 
     const reservationId = result.insertId;
 
-    // Insert members
-    for (const user of validUsers) {
-      await pool.query(
-        `INSERT INTO reservation_members (reservation_id, name, email)
-         VALUES (?, ?, ?)`,
-        [reservationId, user.name, user.email]
-      );
-    }
+    const memberPromises = validUsers.map((u) =>
+      pool.query(
+        `INSERT INTO reservation_members (reservation_id, name, email) VALUES (?, ?, ?)`,
+        [reservationId, u.name, u.email]
+      )
+    );
+    await Promise.all(memberPromises);
 
     res.json({ message: "จองสำเร็จ", reservationId });
   } catch (err) {
-    console.error("❌ [ROOM ERROR]:", err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// ❌ ยกเลิกการจอง → status = Cancelled
+// ❌ Cancel a reservation → status = Cancelled
 router.put("/cancel/:reservationId", async (req, res) => {
-  const { reservationId } = req.params;
-
   try {
     const [result] = await pool.query(
-      `UPDATE reservations 
-       SET status = 'Cancelled'
-       WHERE reservation_id = ?`,
-      [reservationId]
+      `UPDATE reservations SET status = ? WHERE reservation_id = ?`,
+      [RoomStatus.CANCELLED, req.params.reservationId]
     );
 
-    if (result.affectedRows === 0) {
+    if (result.affectedRows === 0)
       return res.status(404).json({ error: "ไม่พบข้อมูลการจอง" });
-    }
 
     res.json({ message: "ยกเลิกการจองสำเร็จ" });
   } catch (err) {
-    console.error("❌ [CANCEL ERROR]:", err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
 
-// 📌 ดึงรายการจองของผู้ใช้โดยใช้ code_user
+// 📌 fetch user's reservations by code_user
 router.get("/my/:code_user", async (req, res) => {
-  const { code_user } = req.params;
-
   try {
-    // หา user
-    const [userRows] = await pool.query(
-      "SELECT user_id, email FROM users WHERE code_user = ?",
-      [code_user]
-    );
+    const user = await findUserByCode(req.params.code_user);
 
-    if (userRows.length === 0) {
-      return res.status(404).json({ error: "ไม่พบผู้ใช้นี้" });
-    }
+    if (!user) return res.status(404).json({ error: "ไม่พบผู้ใช้นี้" });
 
-    const userId = userRows[0].user_id;
-    const userEmail = userRows[0].email;
-
-    // ⭐ อัปเดต booking ที่หมดเวลาเป็น Confirmed
+    // อัปเดต booking ที่หมดเวลาเป็น Confirmed
     await pool.query(
-      `
-      UPDATE reservations
-      SET status = 'Confirmed'
-      WHERE end_time <= NOW()
-        AND status = 'Pending'
-      `
+      `UPDATE reservations
+       SET status = ?
+       WHERE end_time <= NOW() AND status = ?`,
+      [RoomStatus.CONFIRMED, RoomStatus.PENDING]
     );
 
-    // ⭐ ไม่แสดง Cancelled ให้หน้า Front-end
     const [resIds] = await pool.query(
-      `
-      SELECT DISTINCT r.reservation_id
-      FROM reservations r
-      LEFT JOIN reservation_members rm
-        ON r.reservation_id = rm.reservation_id
-      WHERE (r.user_id = ? OR rm.email = ?)
-        AND r.status != 'Cancelled'
-      `,
-      [userId, userEmail]
+      `SELECT DISTINCT r.reservation_id
+       FROM reservations r
+       LEFT JOIN reservation_members rm ON r.reservation_id = rm.reservation_id
+       WHERE (r.user_id = ? OR rm.email = ?) AND r.status != ?`,
+      [user.user_id, user.email, RoomStatus.CANCELLED]
     );
 
     if (resIds.length === 0) return res.json([]);
 
     const idList = resIds.map((r) => r.reservation_id);
 
-    // ดึงข้อมูลจริง
     const [rows] = await pool.query(
-      `
-      SELECT
-        r.reservation_id,
-        rooms.room_name,
-        rooms.location,
-        r.start_time,
-        r.end_time,
-        r.status,
-        COUNT(rm.member_id) AS member_count
-      FROM reservations r
-      JOIN rooms ON r.room_id = rooms.room_id
-      LEFT JOIN reservation_members rm
-        ON r.reservation_id = rm.reservation_id
-      WHERE r.reservation_id IN (?)
-      GROUP BY 
-        r.reservation_id, rooms.room_name, rooms.location, 
-        r.start_time, r.end_time, r.status
-      ORDER BY r.start_time ASC
-      `,
+      `SELECT r.reservation_id, rooms.room_name, rooms.location,
+              r.start_time, r.end_time, r.status,
+              COUNT(rm.member_id) AS member_count
+       FROM reservations r
+       JOIN rooms ON r.room_id = rooms.room_id
+       LEFT JOIN reservation_members rm ON r.reservation_id = rm.reservation_id
+       WHERE r.reservation_id IN (?)
+       GROUP BY r.reservation_id, rooms.room_name, rooms.location,
+                r.start_time, r.end_time, r.status
+       ORDER BY r.start_time ASC`,
       [idList]
     );
 
     res.json(rows);
   } catch (err) {
-    console.error("❌ [GET MY ERROR]:", err);
+    console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });

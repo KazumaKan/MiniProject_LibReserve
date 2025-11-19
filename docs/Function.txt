@@ -3,10 +3,10 @@
 ═══════════════════════════════════════════════════════
 - 📄 File : config/db.js  
 - 📄 File : routes/auth.js
-- 📄 ไฟล์: routes/rooms.js
-- 📄 ไฟล์: routes/reservations.js
-- 📄 ไฟล์: sockets/reservationSocket.js
-- 📄 ไฟล์: server.js
+- 📄 File: routes/rooms.js
+- 📄 File: routes/reservations.js
+- 📄 File: sockets/reservationSocket.js
+- 📄 File: server.js
 ╚══════════════════════════════════════════════════════╝
 
 📄 File : config/db.js
@@ -38,16 +38,19 @@
         - ตรวจสอบข้อมูลในตาราง users
         - ถ้าถูกต้อง สร้าง JWT token ส่งกลับ
         - ส่งกลับข้อมูล : token, userId, name, email, faculty, major
+        - ถ้า email ไม่ถูกต้องจะส่ง : { "message": "User not found" }
+        - ถ้า Password ไม่ถูกต้องจะส่ง : { "message": "Invalid password" }
+        - ถ้ามี email หรือ password เป็นช่องว่าง(ไม่ได้ใส่ข้อมูล) จะส่ง : { "message": "Email and password are required" }
 
         2️⃣ GET /auth/profile/:id
         - ดึงข้อมูลโปรไฟล์จาก user_id
         - ส่งกลับข้อมูล : id, name, email
+        - หากไม่พบ User_id จะส่ง { "message": "User not found" }
 
     Logic :
     - ใช้ jwt.sign() เพื่อสร้าง token มีอายุ 2 ชั่วโมง
-    - ยังไม่ได้เข้ารหัสรหัสผ่าน (เหมาะสำหรับ demo/testing)
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: routes/rooms.js
+📄 File : routes/rooms.js
     หน้าที่ :
     - ดึงข้อมูลห้องทั้งหมดในระบบ
 
@@ -57,7 +60,6 @@
         - ส่งกลับเป็น JSON array ของห้องทั้งหมด
 
     โครงสร้างข้อมูลที่ส่งกลับ :
-    [
     {
         "room_id": 1,
         "room_name": "ห้องประชุม 1",
@@ -67,18 +69,34 @@
     ...
     
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: routes/reservations.js
+📄 File : routes/reservations.js
     หน้าที่ :
     - จัดการระบบการจองห้องประชุม
-    - ตรวจสอบห้องว่าง ตรวจสอบสมาชิก และบันทึกการจอง
+    - ตรวจสอบห้องว่าง, ตรวจสอบสมาชิก, ตรวจสอบเวลา และบันทึกการจอง
 
     ฟังก์ชัน/Route สำคัญ :
 
         1️⃣ ฟังก์ชัน isRoomAvailable(roomId, startTime, endTime)
         - ตรวจสอบว่าห้องซ้ำเวลาหรือไม่
         - ถ้าไม่มีรายการซ้อน return true (ว่าง)
+        - SQL : ตรวจสอบ reservations โดยไม่รวม Cancelled
 
-        2️⃣ POST /reservations/room
+        2️⃣ ฟังก์ชัน findUserByCode(code_user)
+        - ตรวจสอบว่ามีผู้ใช้ในระบบตาม code_user หรือไม่
+        - Return user object ถ้ามี, null ถ้าไม่พบ
+        
+        3️⃣ ฟังก์ชัน findUsersByCodes(codeUsers)
+        - ตรวจสอบ code_user หลายตัวพร้อมกัน
+        - Return array ของผู้ใช้ที่พบในระบบ
+        
+        4️⃣ ฟังก์ชัน validateBookingTime(startTime, endTime)
+        - ตรวจสอบเวลาจอง
+        - ❌ ไม่อนุญาตจองย้อนหลัง
+        - ❌ เวลาเริ่มก่อน 9:00 หรือเวลาสิ้นสุดหลัง 17:00
+        - ❌ เวลาสิ้นสุด <= เวลาเริ่ม
+        - ❌ จองเกิน 2 ชั่วโมง
+        
+        5️⃣ POST /reservations/room
         - ใช้สำหรับสร้างการจองใหม่
         - ตรวจสอบ :
             ✅ สมาชิกอย่างน้อย 3 คน
@@ -86,13 +104,24 @@
             ✅ ไม่เกิน 2 ชั่วโมง
             ✅ ห้องต้องว่าง
             ✅ code_user ทุกคนต้องมีในระบบ
-        - ถ้าผ่านทั้งหมด → INSERT ข้อมูลการจองและสมาชิก
+        - ถ้าผ่านทั้งหมด → INSERT ข้อมูล reservations + reservation_members
 
-        3️⃣ GET /reservations/my/:userId
+        6️⃣ PUT /reservations/cancel/:reservationId
+        - ใช้ยกเลิกการจอง
+        - เปลี่ยน status เป็น Cancelled
+
+        7️⃣ GET /reservations/my/:userId
         - ดึงรายการจองทั้งหมดของผู้ใช้ (ทั้งเจ้าของและที่เป็นสมาชิก)
         - JOIN ตาราง reservations + reservation_members
+
+        8️⃣ GET /reservations/my/:code_user
+        - ดึงรายการจองทั้งหมดของผู้ใช้ (ทั้งเจ้าของและสมาชิก)
+        - JOIN ตาราง reservations + reservation_members
+        - ❌ ไม่แสดงรายการ Cancelled
+        - ⭐ อัปเดต booking ที่หมดเวลาเป็น Confirmed
+
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: sockets/reservationSocket.js
+📄 File : sockets/reservationSocket.js
     หน้าที่ :
     - จัดการการสื่อสารแบบเรียลไทม์ผ่าน Socket.io
     - เมื่อมีการจองใหม่ จะ broadcast ข้อมูลให้ทุก client ที่เชื่อมต่อ
@@ -106,20 +135,22 @@
     - ทำให้หน้า Frontend อัปเดตสถานะห้องหรือการจองได้ทันทีโดยไม่ต้องรีเฟรช
         - JOIN ตาราง reservations + reservation_members
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: server.js
+📄 File : server.js
     หน้าที่ :
     - เป็นจุดเริ่มต้นของแอปทั้งหมด (main entry point)
     - รวม Express, Socket.io, Routes และ Middleware
 
     โครงสร้างหลัก :
     1️⃣ สร้าง express app
-    2️⃣ ใช้ middleware: cors(), express.json()
+    2️⃣ ใช้ middleware: cors(), express.json(), jsonResponseHeader
     3️⃣ กำหนด routes:
     - /auth → routes/auth.js
     - /reservations → routes/reservations.js
     - /rooms → routes/rooms.js
+    - /ping → Health check
     4️⃣ สร้าง HTTP server + Socket.io server
     5️⃣ เริ่มฟัง port (3000)
+    6️⃣ จัดการ error: notFoundHandler, errorHandler
 
     ตรวจสอบ server :
     GET /ping → { "status": "ok" }

@@ -2,10 +2,10 @@
                     Table of Contents                   
 ═══════════════════════════════════════════════════════
 - 📄 File : routes/auth.js
-- 📄 ไฟล์: routes/rooms.js
-- 📄 ไฟล์: routes/reservations.js
-- 📄 ไฟล์: sockets/reservationSocket.js
-- 📄 ไฟล์: server.js
+- 📄 File : routes/rooms.js
+- 📄 File : routes/reservations.js
+- 📄 File : sockets/reservationSocket.js
+- 📄 File : server.js
 ╚══════════════════════════════════════════════════════╝
 
 📄 File : routes/auth.js :   
@@ -15,18 +15,19 @@
     URL : http://localhost:3000/auth/login
     Body (JSON) :
         {
-        "email": "student1@gmail.com",
-        "password": "1234"
+        "email": "benja.sri@example.com",
+        "password": "B3nj@2025!s"
         }
         
     ผลลัพธ์ (ตัวอย่าง):
         {
-        "token": "eyJhbGciOiJIUzI1NiIs...",
-        "userId": 1,
-        "name": "สมชาย ใจดี",
-        "email": "student1@gmail.com",
-        "faculty": "Engineering",
-        "major": "Computer"
+            "token": "eyJhbGciOiJIUzI1NiIs...",
+            "code_user": "68000001",
+            "userId": 1,
+            "name": "เบญจา ศรีจันทร์",
+            "email": "benja.sri@example.com",
+            "faculty": "วิทยาศาสตร์",
+            "major": "ชีววิทยา"
         }
 
         ❌ ถ้าอีเมลผิด → { "message": "User not found" }
@@ -39,12 +40,14 @@
 
     ผลลัพธ์ (ตัวอย่าง) :
         {
-        "id": 1,
-        "name": "สมชาย ใจดี",
-        "email": "student1@gmail.com"
+            "id": 1,
+            "name": "เบญจา ศรีจันทร์",
+            "email": "benja.sri@example.com"
         }
+
+        ❌ ไม่พบ User_id → { "message": "User not found" }
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: routes/rooms.js
+📄 File : routes/rooms.js
     TEST : ดึงข้อมูลห้องทั้งหมด
     Communication : HTTP
     Method : GET
@@ -52,8 +55,22 @@
 
     ผลลัพธ์ (ตัวอย่าง) :
     [
-    { "room_id": 1, "room_name": "A101", "capacity": 8 },
-    { "room_id": 2, "room_name": "A102", "capacity": 10 }
+        {
+            "room_id": 1,
+            "room_name": "Study Room 1",
+            "capacity": 6,
+            "location": "11-0400",
+            "available": 1,
+            "amenity": "ชุดเขียนไวท์บอร์ด / TV / สาย VGA / สาย HDMI"
+        },
+        {
+            "room_id": 2,
+            "room_name": "Study Room 1",
+            "capacity": 6,
+            "location": "11-0400",
+            "available": 1,
+            "amenity": "TV / สาย VGA / สาย HDMI"
+        }
     ]
 
     ❌ ถ้ามีปัญหาฐานข้อมูล :
@@ -61,18 +78,18 @@
     "message": "Error fetching rooms"
     }
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: routes/reservations.js
-    1️⃣ TEST : จองห้องใหม่
+📄 File : routes/reservations.js
+    1️⃣ TEST : จองห้อง
     Communication : HTTP
     Method : POST
     URL : http://localhost:3000/reservations/room
     Body (JSON) :
         {
-        "userId": 1,
-        "roomId": 2,
-        "startTime": "2025-10-29T10:00:00",
-        "endTime": "2025-10-29T12:00:00",
-        "codeUsers": ["65010001", "65010002", "65010003"]
+            "userId": 1,
+            "roomId": 2,
+            "startTime": "2025-11-20T10:00:00",
+            "endTime": "2025-11-20T12:00:00",
+            "codeUsers": ["68000002", "68000003", "68000004"]
         }
 
     ผลลัพธ์ (ตัวอย่าง) :
@@ -90,20 +107,48 @@
     2️⃣ TEST : ดึงรายการจองของผู้ใช้
     Communication : HTTP
     Method : GET
-    URL : http://localhost:3000/reservations/my/1
+    URL : http://localhost:3000/reservations//my/check/68000001
 
     ผลลัพธ์ (ตัวอย่าง) :
-        [
         {
-            "reservation_id": 25,
-            "room_id": 2,
-            "start_time": "2025-10-29T10:00:00.000Z",
-            "end_time": "2025-10-29T12:00:00.000Z",
-            "member_name": "สมหญิง น่ารัก"
+            "message": "User พบในระบบ",
+            "user": {
+                "user_id": 1,
+                "code_user": "68000001",
+                "name": "เบญจา ศรีจันทร์",
+                "email": "benja.sri@example.com"
+            }
         }
+    
+    3️⃣ TEST : ยกเลิกการจอง
+    Communication : HTTP
+    Method : PUT
+    URL : http://localhost:3000/reservations/cancel/7
+    
+    ผลลัพธ์ (ตัวอย่าง) :
+        {
+            "message": "ยกเลิกการจองสำเร็จ"
+        }
+
+    4️⃣ TEST : ดูห้องที่จอง
+    Communication : HTTP
+    Method : PUT
+    URL : http://localhost:3000/reservations/my/68000001
+    
+    ผลลัพธ์ (ตัวอย่าง) :
+        [
+            {
+                "reservation_id": 3,
+                "room_name": "Idea Room",
+                "location": "11-0400",
+                "start_time": "2025-11-19T08:00:00.000Z",
+                "end_time": "2025-11-19T10:00:00.000Z",
+                "status": "Confirmed",
+                "member_count": 3
+            }
         ]
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: sockets/reservationSocket.js
+📄 File : sockets/reservationSocket.js
     วิธีเทสผ่าน Socket.io Client หรือ Frontend
 
     1️⃣ เปิด server ด้วย : node server.js หรือ npm start
@@ -121,7 +166,7 @@
 
     ❌ ถ้าไม่เห็น log → ตรวจสอบว่า socket.io server เชื่อมต่อถูกหรือไม่
 ═══════════════════════════════════════════════════════
-📄 ไฟล์: server.js
+📄 File : server.js
     TEST : ตรวจสอบว่า server ทำงานหรือไม่
     Communication : HTTP
     Method : GET
