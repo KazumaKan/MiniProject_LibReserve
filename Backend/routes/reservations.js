@@ -156,7 +156,7 @@ router.get("/my/:userId", async (req, res) => {
         r.reservation_id, 
         r.room_id, 
         r.start_time, 
-        r.end_time, 
+        r.end_time,
         rm.name AS member_name
       FROM reservations r
       JOIN reservation_members rm 
