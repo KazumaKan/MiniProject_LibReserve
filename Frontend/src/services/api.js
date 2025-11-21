@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://10.99.104.23:3000"; 
+const API_BASE_URL = "http://10.99.104.23:3000";
 console.log("🌐 API Base URL:", API_BASE_URL);
 
 // ============ AUTH API ============
@@ -28,7 +28,8 @@ export const authAPI = {
         major: data.major || "",
       };
 
-      if (!user.id) throw new Error("Invalid response from server (missing userId)");
+      if (!user.id)
+        throw new Error("Invalid response from server (missing userId)");
       console.log("✅ Login success:", user);
 
       return { user, token: data.token };
@@ -38,7 +39,6 @@ export const authAPI = {
     }
   },
 };
-
 
 // ============ RESERVATIONS API ============
 export const reservationAPI = {
@@ -53,64 +53,64 @@ export const reservationAPI = {
   },
 
   // Booking room
-    async bookRoom(bookingData, token) {
-      console.log("📤 Booking room with data:", bookingData);
-      try {
-        const res = await fetch(`${API_BASE_URL}/reservations/room`, {  // <-- เปลี่ยน /reservations เป็น /my/room
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json", 
-            Authorization: `Bearer ${token}` 
-          },
-          body: JSON.stringify(bookingData),
-        });
+  async bookRoom(bookingData, token) {
+    console.log("📤 Booking room with data:", bookingData);
+    try {
+      const res = await fetch(`${API_BASE_URL}/reservations/room`, {
+        // <-- เปลี่ยน /reservations เป็น /my/room
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingData),
+      });
 
-        console.log("📩 Booking response status:", res.status);
+      console.log("📩 Booking response status:", res.status);
 
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("❌ Booking failed response:", text);
-          throw new Error("Booking failed: " + res.status);
-        }
-
-        const data = await res.json();
-        console.log("✅ Booking response:", data);
-        return data;
-      } catch (error) {
-        console.error("❌ Booking error:", error.message);
-        throw error;
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ Booking failed response:", text);
+        throw new Error("Booking failed: " + res.status);
       }
-      },
 
+      const data = await res.json();
+      console.log("✅ Booking response:", data);
+      return data;
+    } catch (error) {
+      console.error("❌ Booking error:", error.message);
+      throw error;
+    }
+  },
 
   // ดึงรายการจองของผู้ใช้
-    async getMyReservations(codeUser, token) {
-      console.log("📋 Fetching reservations for user code_user:", codeUser);
-      try {
-        const res = await fetch(`${API_BASE_URL}/reservations/my/${codeUser}`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
+  async getMyReservations(codeUser, token) {
+    console.log("📋 Fetching reservations for user code_user:", codeUser);
+    try {
+      const res = await fetch(`${API_BASE_URL}/reservations/my/${codeUser}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-        console.log("📩 My reservations response status:", res.status);
+      console.log("📩 My reservations response status:", res.status);
 
-        if (!res.ok) {
-          const text = await res.text();
-          console.error("❌ Failed to fetch my reservations:", text);
-          throw new Error("Cannot fetch reservations: " + res.status);
-        }
-
-        const data = await res.json();
-        console.log("✅ My reservations data:", data);
-        return data;
-      } catch (error) {
-        console.error("❌ Error fetching my reservations:", error.message);
-        throw error;
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("❌ Failed to fetch my reservations:", text);
+        throw new Error("Cannot fetch reservations: " + res.status);
       }
-    },
+
+      const data = await res.json();
+      console.log("✅ My reservations data:", data);
+      return data;
+    } catch (error) {
+      console.error("❌ Error fetching my reservations:", error.message);
+      throw error;
+    }
+  },
 
   // ยกเลิกการจอง
   cancelReservation: async (reservationId, token) => {
@@ -138,8 +138,6 @@ export const reservationAPI = {
 
     return data;
   },
-
-
 };
 
 // ============ ROOMS API ============
@@ -180,24 +178,26 @@ export const apiUtils = {
     }
   },
 
-checkMemberExists: async (memberId) => {
-  console.log("🔍 Checking member:", memberId);
-  try {
-    const res = await fetch(`${API_BASE_URL}/reservations/my/check/${memberId}`);
-    console.log("📩 Member check status:", res.status);
+  checkMemberExists: async (memberId) => {
+    console.log("🔍 Checking member:", memberId);
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/reservations/my/check/${memberId}`
+      );
+      console.log("📩 Member check status:", res.status);
 
-    if (!res.ok) {
-      const text = await res.text();  // อ่าน text แทน json
-      console.error("❌ Member not found or error:", text);
-      throw new Error(`สมาชิกไม่พบ หรือเกิดข้อผิดพลาด: ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text(); // อ่าน text แทน json
+        console.error("❌ Member not found or error:", text);
+        throw new Error(`สมาชิกไม่พบ หรือเกิดข้อผิดพลาด: ${res.status}`);
+      }
+
+      const data = await res.json();
+      console.log("✅ Member found:", data);
+      return data.user; // คืน user object ตาม backend
+    } catch (error) {
+      console.error("❌ Member check error:", error.message);
+      throw new Error(error.message || "Cannot check member");
     }
-
-    const data = await res.json();
-    console.log("✅ Member found:", data);
-    return data.user;  // คืน user object ตาม backend
-  } catch (error) {
-    console.error("❌ Member check error:", error.message);
-    throw new Error(error.message || "Cannot check member");
-  }
-}
+  },
 };
